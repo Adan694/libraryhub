@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  LIBRARIAN
+  MEMBER
+}
+
+enum BorrowStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+}
+
+enum ReservationStatus {
+  WAITING
+  FULFILLED
+  CANCELLED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(MEMBER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  borrows      Borrow[]
+  reservations Reservation[]
+
+  @@index([email])
+}
+
+model Book {
+  id              String        @id @default(cuid())
+  title           String
+  author          String
+  isbn            String        @unique
+  category        String
+  totalCopies     Int
+  availableCopies Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  borrows         Borrow[]
+  reservations    Reservation[]
+
+  @@index([title])
+  @@index([author])
+  @@index([category])
+}
+
+model Borrow {
+  id         String       @id @default(cuid())
+  userId     String
+  bookId     String
+  borrowedAt DateTime     @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+  fine       Float        @default(0)
+  status     BorrowStatus @default(ACTIVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([status])
+}
+
+model Reservation {
+  id        String            @id @default(cuid())
+  userId    String
+  bookId    String
+  createdAt DateTime          @default(now())
+  status    ReservationStatus @default(WAITING)
+  position  Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, status])
+  @@index([userId])
+}
