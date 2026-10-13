@@ -50,9 +50,9 @@ borrowsRouter.post("/:id/return", requireAuth, async (req, res, next) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
       const borrow = await tx.borrow.findUnique({
-        where: { id: req.params.id },
-        include: { book: true },
-      });
+  where: { id: String(req.params.id) },
+  include: { book: true },
+});
       if (!borrow) throw new Error("BORROW_NOT_FOUND");
       if (borrow.userId !== req.auth!.userId) throw new Error("FORBIDDEN");
       if (borrow.status === "RETURNED") throw new Error("ALREADY_RETURNED");

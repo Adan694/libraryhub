@@ -41,7 +41,7 @@ booksRouter.get("/", async (req, res, next) => {
 // Single book
 booksRouter.get("/:id", async (req, res, next) => {
   try {
-    const book = await prisma.book.findUnique({ where: { id: req.params.id } });
+const book = await prisma.book.findUnique({ where: { id: String(req.params.id) } });
     if (!book) return res.status(404).json({ error: "Book not found" });
     res.json(book);
   } catch (e) { next(e); }
@@ -63,7 +63,7 @@ booksRouter.patch("/:id", requireAuth, requireLibrarian, async (req, res, next) 
   try {
     const data = updateBookSchema.parse(req.body);
     const book = await prisma.book.update({
-      where: { id: req.params.id },
+where: { id: String(req.params.id) },
       data,
     });
     res.json(book);
@@ -73,7 +73,7 @@ booksRouter.patch("/:id", requireAuth, requireLibrarian, async (req, res, next) 
 // Librarian: delete
 booksRouter.delete("/:id", requireAuth, requireLibrarian, async (req, res, next) => {
   try {
-    await prisma.book.delete({ where: { id: req.params.id } });
+await prisma.book.delete({ where: { id: String(req.params.id) } });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
