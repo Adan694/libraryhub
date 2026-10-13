@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>LibraryHub</title>
     <style>
       * {
@@ -116,6 +117,7 @@
         display: none;
       }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/zod@3.23.8/lib/index.umd.min.js"></script>
   </head>
   <body>
     <div class="container">
@@ -214,6 +216,30 @@
 
     <script>
       const API = "https://libraryhub-two.vercel.app";
+      // Same definitions as server/src/schemas/ — kept in sync manually
+      const registerSchema = z.object({
+        email: z.string().email(),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+        name: z.string().min(2),
+      });
+
+      const loginSchema = z.object({
+        email: z.string().email("Invalid email"),
+        password: z.string().min(1, "Password required"),
+      });
+
+      const createBookSchema = z.object({
+        title: z.string().min(1, "Title required"),
+        author: z.string().min(1, "Author required"),
+        isbn: z.string().min(5, "ISBN too short"),
+        category: z.string().min(1, "Category required"),
+        totalCopies: z.number().int().min(1, "At least 1 copy"),
+      });
+
+      const borrowBookSchema = z.object({
+        bookId: z.string().min(1),
+        days: z.number().int().min(1).max(30).default(14),
+      });
       let currentUser = null;
       let authToken = localStorage.getItem("lh_token") || "";
 
@@ -237,10 +263,17 @@
         const password = document.getElementById("password").value;
         const errEl = document.getElementById("login-error");
         errEl.textContent = "";
+
+        const parsed = loginSchema.safeParse({ email, password });
+        if (!parsed.success) {
+          errEl.textContent = parsed.error.issues[0].message;
+          return;
+        }
+
         try {
           currentUser = await api("/api/auth/login", {
             method: "POST",
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify(parsed.data),
           });
           authToken = currentUser.token;
           localStorage.setItem("lh_token", authToken);
@@ -249,7 +282,6 @@
           errEl.textContent = e.message;
         }
       }
-
       async function logout() {
         authToken = "";
         localStorage.removeItem("lh_token");
@@ -322,10 +354,15 @@
 
       // ---------- MEMBER ----------
       async function borrow(bookId) {
+        const parsed = borrowBookSchema.safeParse({ bookId, days: 14 });
+        if (!parsed.success) {
+          alert("Invalid borrow request: " + parsed.error.issues[0].message);
+          return;
+        }
         try {
           await api("/api/borrows", {
             method: "POST",
-            body: JSON.stringify({ bookId, days: 14 }),
+            body: JSON.stringify(parsed.data),
           });
           await loadBooks();
           await loadBorrows();
@@ -447,34 +484,31 @@
       }
 
       async function addBook() {
-        const title = document.getElementById("new-title").value.trim();
-        const author = document.getElementById("new-author").value.trim();
-        const isbn = document.getElementById("new-isbn").value.trim();
-        const category = document.getElementById("new-category").value.trim();
-        const totalCopies = parseInt(
-          document.getElementById("new-copies").value,
-        );
+        const raw = {
+          title: document.getElementById("new-title").value.trim(),
+          author: document.getElementById("new-author").value.trim(),
+          isbn: document.getElementById("new-isbn").value.trim(),
+          category: document.getElementById("new-category").value.trim(),
+          totalCopies: parseInt(
+            document.getElementById("new-copies").value,
+            10,
+          ),
+        };
 
-        if (!title || !author || !isbn || !category || !totalCopies) {
-          alert("Fill in all fields");
+        const parsed = createBookSchema.safeParse(raw);
+        if (!parsed.success) {
+          alert("Validation error: " + parsed.error.issues[0].message);
           return;
         }
 
         try {
           await api("/api/books", {
             method: "POST",
-            body: JSON.stringify({
-              title,
-              author,
-              isbn,
-              category,
-              totalCopies,
-            }),
+            body: JSON.stringify(parsed.data),
           });
-          document.getElementById("new-title").value = "";
-          document.getElementById("new-author").value = "";
-          document.getElementById("new-isbn").value = "";
-          document.getElementById("new-category").value = "";
+          ["new-title", "new-author", "new-isbn", "new-category"].forEach(
+            (id) => (document.getElementById(id).value = ""),
+          );
           document.getElementById("new-copies").value = "1";
           toggleAddBook();
           await loadBooks();
@@ -482,7 +516,6 @@
           alert("Add failed: " + e.message);
         }
       }
-
       async function deleteBook(bookId, title) {
         if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
         try {
