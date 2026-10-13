@@ -101,12 +101,8 @@ cd libraryhub/server
 npm install
 ```
 
-Copy `server/.env.example` to `server/.env` and fill in your own values:
 
 ```
-DATABASE_URL="postgresql://neondb_owner:npg_Ag8E6fmiThNZ@ep-hidden-unit-b5wbw7yt-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-JWT_SECRET="2t8iTkGl0ZzYqdavCmF63N1cJrWDXLyHKeoAbSEMnRxfwUgup4jPhV9Q5O7IsB"
-PORT=4000
 CLIENT_URL="http://localhost:5173"
 NODE_ENV="development"
 ```
