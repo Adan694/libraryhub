@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LibraryHub</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 20px;
+        line-height: 1.5;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-bottom: 1px solid #1e293b;
+        margin-bottom: 24px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 24px 0 12px;
+        color: #94a3b8;
+      }
+      .card {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+      .card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      button {
+        background: #6366f1;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      button:hover {
+        background: #4f46e5;
+      }
+      button:disabled {
+        background: #475569;
+        cursor: not-allowed;
+      }
+      button.secondary {
+        background: #334155;
+      }
+      button.secondary:hover {
+        background: #475569;
+      }
+      input {
+        background: #0f172a;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        padding: 10px 12px;
+        border-radius: 6px;
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .login-box {
+        max-width: 400px;
+        margin: 80px auto;
+      }
+      .muted {
+        color: #94a3b8;
+        font-size: 14px;
+      }
+      .tag {
+        display: inline-block;
+        background: #0f172a;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      .tag.green {
+        color: #4ade80;
+      }
+      .tag.red {
+        color: #f87171;
+      }
+      .error {
+        color: #f87171;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- LOGIN -->
+      <div id="login-view" class="login-box">
+        <h1 style="margin-bottom: 8px">LibraryHub</h1>
+        <p class="muted" style="margin-bottom: 24px">
+          Sign in to browse and borrow books.
+        </p>
+        <input
+          id="email"
+          type="email"
+          placeholder="Email"
+          value="member@libraryhub.dev"
+        />
+        <input
+          id="password"
+          type="password"
+          placeholder="Password"
+          value="password123"
+        />
+        <button onclick="login()" style="width: 100%">Sign In</button>
+        <div id="login-error" class="error"></div>
+        <p class="muted" style="margin-top: 16px; font-size: 13px">
+          <strong>Demo accounts</strong><br />
+          Librarian: librarian@libraryhub.dev / password123<br />
+          Member: member@libraryhub.dev / password123
+        </p>
+      </div>
+
+      <!-- APP -->
+      <div id="app-view" class="hidden">
+        <header>
+          <h1>LibraryHub</h1>
+          <div>
+            <span
+              id="user-info"
+              class="muted"
+              style="margin-right: 12px"
+            ></span>
+            <button class="secondary" onclick="logout()">Logout</button>
+          </div>
+        </header>
+
+        <h2>Book Catalogue</h2>
+        <div id="books"></div>
+
+        <h2>My Borrows</h2>
+        <div id="borrows"></div>
+
+        <div id="librarian-section" class="hidden">
+          <h2>Librarian Dashboard</h2>
+          <div id="dashboard"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = "https://libraryhub-api.onrender.com";
+      let currentUser = null;
+
+      async function api(path, options = {}) {
+        const res = await fetch(`${API}${path}`, {
+          ...options,
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+          },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
+        return res.json();
+      }
+
+      async function login() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const errEl = document.getElementById("login-error");
+        errEl.textContent = "";
+        try {
+          currentUser = await api("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          showApp();
+        } catch (e) {
+          errEl.textContent = e.message;
+        }
+      }
+
+      async function logout() {
+        await api("/api/auth/logout", { method: "POST" });
+        currentUser = null;
+        document.getElementById("login-view").classList.remove("hidden");
+        document.getElementById("app-view").classList.add("hidden");
+      }
+
+      async function showApp() {
+        document.getElementById("login-view").classList.add("hidden");
+        document.getElementById("app-view").classList.remove("hidden");
+        document.getElementById("user-info").textContent =
+          `${currentUser.name} (${currentUser.role})`;
+
+        await loadBooks();
+        await loadBorrows();
+
+        if (currentUser.role === "LIBRARIAN") {
+          document
+            .getElementById("librarian-section")
+            .classList.remove("hidden");
+          await loadDashboard();
+        }
+      }
+
+      async function loadBooks() {
+        const data = await api("/api/books?limit=20");
+        const el = document.getElementById("books");
+        if (data.books.length === 0) {
+          el.innerHTML = '<p class="muted">No books yet.</p>';
+          return;
+        }
+        el.innerHTML = data.books
+          .map(
+            (b) => `
+        <div class="card">
+          <div class="card-row">
+            <div>
+              <strong>${b.title}</strong>
+              <div class="muted">${b.author} — ${b.category}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="tag ${b.availableCopies > 0 ? "green" : "red"}">
+                ${b.availableCopies} / ${b.totalCopies} available
+              </div>
+              ${
+                currentUser.role === "MEMBER" && b.availableCopies > 0
+                  ? `<button style="margin-top: 8px;" onclick="borrow('${b.id}')">Borrow</button>`
+                  : ""
+              }
+            </div>
+          </div>
+        </div>
+      `,
+          )
+          .join("");
+      }
+
+      async function borrow(bookId) {
+        try {
+          await api("/api/borrows", {
+            method: "POST",
+            body: JSON.stringify({ bookId, days: 14 }),
+          });
+          await loadBooks();
+          await loadBorrows();
+        } catch (e) {
+          alert("Borrow failed: " + e.message);
+        }
+      }
+
+      async function loadBorrows() {
+        const borrows = await api("/api/borrows/me");
+        const el = document.getElementById("borrows");
+        if (borrows.length === 0) {
+          el.innerHTML = '<p class="muted">No borrows yet.</p>';
+          return;
+        }
+        el.innerHTML = borrows
+          .map(
+            (b) => `
+        <div class="card">
+          <div class="card-row">
+            <div>
+              <strong>${b.book.title}</strong>
+              <div class="muted">Due: ${new Date(b.dueAt).toLocaleDateString()}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="tag ${b.status === "RETURNED" ? "" : b.status === "OVERDUE" ? "red" : "green"}">${b.status}</div>
+              ${b.fine > 0 ? `<div class="tag red" style="margin-top: 4px;">Fine: ${b.fine}</div>` : ""}
+              ${b.status !== "RETURNED" ? `<button class="secondary" style="margin-top: 8px;" onclick="returnBook('${b.id}')">Return</button>` : ""}
+            </div>
+          </div>
+        </div>
+      `,
+          )
+          .join("");
+      }
+
+      async function returnBook(borrowId) {
+        try {
+          await api(`/api/borrows/${borrowId}/return`, { method: "POST" });
+          await loadBooks();
+          await loadBorrows();
+        } catch (e) {
+          alert("Return failed: " + e.message);
+        }
+      }
+
+      async function loadDashboard() {
+        const d = await api("/api/dashboard");
+        document.getElementById("dashboard").innerHTML = `
+        <div class="card">
+          <div>Total books: <strong>${d.totalBooks}</strong></div>
+          <div>Members: <strong>${d.totalMembers}</strong></div>
+          <div>Active borrows: <strong>${d.activeBorrows}</strong></div>
+          <div>Overdue: <strong>${d.overdueCount}</strong></div>
+          <div>Fines collected: <strong>${d.totalFinesCollected}</strong></div>
+        </div>
+      `;
+      }
+    </script>
+  </body>
+</html>
