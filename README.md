@@ -168,7 +168,7 @@ Returning reverses it and computes the fine as `daysLate * 10`.
 
 ## What's not built
 
-Reservations, ISBN lookup via Open Library, and email reminders were listed as bonus. The schema supports reservations but the API and UI weren't built in time, so they were left out rather than half-finished.
+ISBN lookup via Open Library, and email reminders were listed as bonus. 
 
 ## Deploying
 
