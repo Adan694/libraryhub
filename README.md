@@ -88,6 +88,10 @@ Everything that touches the `availableCopies` count runs inside a `prisma.$trans
 - bcrypt for password hashing
 - Vanilla JS frontend (no build step)
 
+
+Validation: Zod. Schemas live in `server/src/schemas/` and are duplicated in
+`client/index.html` (loaded from CDN) because the frontend has no build step.
+Both sides enforce the same rules; the shapes are kept in sync manually.
 ## Running it locally
 
 You'll need Node 18+ and a Postgres database. Neon's free tier works fine, or run one locally with Docker.
