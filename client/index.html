@@ -170,6 +170,9 @@
 
           <h2>My Borrows</h2>
           <div id="borrows"></div>
+
+          <h2>My Reservations</h2>
+          <div id="reservations"></div>
         </div>
 
         <!-- LIBRARIAN VIEW -->
@@ -308,6 +311,7 @@
           document.getElementById("member-view").classList.remove("hidden");
           await loadBooks();
           await loadBorrows();
+          await loadReservations();
         }
       }
 
@@ -334,11 +338,16 @@
             <div class="tag ${b.availableCopies > 0 ? "green" : "red"}">
               ${b.availableCopies} / ${b.totalCopies} available
             </div>
-            ${
-              currentUser.role === "MEMBER" && b.availableCopies > 0
-                ? `<button style="margin-top: 8px;" onclick="borrow('${b.id}')">Borrow</button>`
-                : ""
-            }
+           ${
+             currentUser.role === "MEMBER" && b.availableCopies > 0
+               ? `<button style="margin-top: 8px;" onclick="borrow('${b.id}')">Borrow</button>`
+               : ""
+           }
+${
+  currentUser.role === "MEMBER" && b.availableCopies === 0
+    ? `<button class="secondary" style="margin-top: 8px;" onclick="reserve('${b.id}')">Reserve</button>`
+    : ""
+}
             ${
               currentUser.role === "LIBRARIAN"
                 ? `<button class="secondary" style="margin-top: 8px;" onclick="deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')">Delete</button>`
@@ -403,6 +412,60 @@
           .join("");
       }
 
+      async function reserve(bookId) {
+        try {
+          await api("/api/reservations", {
+            method: "POST",
+            body: JSON.stringify({ bookId }),
+          });
+          alert("Reserved. You'll be notified when a copy is available.");
+          await loadReservations();
+        } catch (e) {
+          alert("Reserve failed: " + e.message);
+        }
+      }
+
+      async function loadReservations() {
+        const reservations = await api("/api/reservations/me");
+        const el = document.getElementById("reservations");
+        if (!el) return;
+        if (reservations.length === 0) {
+          el.innerHTML = '<p class="muted">No reservations yet.</p>';
+          return;
+        }
+        el.innerHTML = reservations
+          .map(
+            (r) => `
+    <div class="card">
+      <div class="card-row">
+        <div>
+          <strong>${r.book.title}</strong>
+          <div class="muted">Position in queue: ${r.position}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="tag ${r.status === "FULFILLED" ? "green" : r.status === "CANCELLED" ? "" : "red"}">${r.status}</div>
+          ${
+            r.status === "WAITING"
+              ? `<button class="secondary" style="margin-top: 8px;" onclick="cancelReservation('${r.id}')">Cancel</button>`
+              : ""
+          }
+        </div>
+      </div>
+    </div>
+  `,
+          )
+          .join("");
+      }
+
+      async function cancelReservation(id) {
+        if (!confirm("Cancel this reservation?")) return;
+        try {
+          await api(`/api/reservations/${id}`, { method: "DELETE" });
+          await loadReservations();
+        } catch (e) {
+          alert("Cancel failed: " + e.message);
+        }
+      }
       async function returnBook(borrowId) {
         try {
           await api(`/api/borrows/${borrowId}/return`, { method: "POST" });

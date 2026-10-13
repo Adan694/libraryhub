@@ -73,9 +73,22 @@ borrowsRouter.post("/:id/return", requireAuth, async (req, res, next) => {
         where: { id: borrow.bookId },
         data: { availableCopies: { increment: 1 } },
       });
+      // Fulfil the next waiting reservation, if any
+const nextInLine = await tx.reservation.findFirst({
+  where: { bookId: borrow.bookId, status: "WAITING" },
+  orderBy: { position: "asc" },
+});
+if (nextInLine) {
+  await tx.reservation.update({
+    where: { id: nextInLine.id },
+    data: { status: "FULFILLED" },
+  });
+}
 
       return { ...updated, daysLate };
+      
     });
+    
 
     res.json(result);
   } catch (e: any) {

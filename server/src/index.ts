@@ -8,6 +8,8 @@ import { borrowsRouter } from "./routes/borrows.routes";
 import { dashboardRouter } from "./routes/dashboard.routes";
 import { errorHandler } from "./middleware/error";
 import { membersRouter } from "./routes/members.routes";
+import { reservationsRouter } from "./routes/reservations.routes";
+
 const app = express();
 
 const allowedOrigins = env.CLIENT_URL.split(",").map((s) => s.trim());
@@ -34,7 +36,7 @@ app.use("/api/books", booksRouter);
 app.use("/api/borrows", borrowsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/members", membersRouter);
-
+app.use("/api/reservations", reservationsRouter);
 app.use(errorHandler);
 
 // Only start the HTTP server locally — Vercel runs the app as a serverless function
