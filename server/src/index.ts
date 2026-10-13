@@ -11,14 +11,19 @@ import { errorHandler } from "./middleware/error";
 const app = express();
 
 const allowedOrigins = env.CLIENT_URL.split(",").map((s) => s.trim());
-app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin) || env.NODE_ENV !== "production") return cb(null, true);
-    return cb(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin) || env.NODE_ENV !== "production") {
+        return cb(null, true);
+      }
+      return cb(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -31,6 +36,11 @@ app.use("/api/dashboard", dashboardRouter);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`LibraryHub server running on http://localhost:${env.PORT}`);
-});
+// Only start the HTTP server locally — Vercel runs the app as a serverless function
+if (process.env.VERCEL !== "1") {
+  app.listen(env.PORT, () => {
+    console.log(`LibraryHub server running on http://localhost:${env.PORT}`);
+  });
+}
+
+export default app;
