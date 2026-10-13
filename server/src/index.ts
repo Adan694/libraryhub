@@ -7,7 +7,7 @@ import { booksRouter } from "./routes/books.routes";
 import { borrowsRouter } from "./routes/borrows.routes";
 import { dashboardRouter } from "./routes/dashboard.routes";
 import { errorHandler } from "./middleware/error";
-
+import { membersRouter } from "./routes/members.routes";
 const app = express();
 
 const allowedOrigins = env.CLIENT_URL.split(",").map((s) => s.trim());
@@ -33,6 +33,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/books", booksRouter);
 app.use("/api/borrows", borrowsRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/members", membersRouter);
 
 app.use(errorHandler);
 

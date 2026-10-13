@@ -160,15 +160,54 @@
           </div>
         </header>
 
-        <h2>Book Catalogue</h2>
-        <div id="books"></div>
+        <!-- MEMBER VIEW -->
+        <!-- MEMBER VIEW -->
+        <div id="member-view">
+          <h2>Book Catalogue</h2>
+          <div id="member-books"></div>
 
-        <h2>My Borrows</h2>
-        <div id="borrows"></div>
+          <h2>My Borrows</h2>
+          <div id="borrows"></div>
+        </div>
 
-        <div id="librarian-section" class="hidden">
+        <!-- LIBRARIAN VIEW -->
+        <div id="librarian-view" class="hidden">
           <h2>Librarian Dashboard</h2>
           <div id="dashboard"></div>
+
+          <h2>Books</h2>
+          <button onclick="toggleAddBook()" style="margin-bottom: 12px">
+            + Add Book
+          </button>
+
+          <div id="add-book-form" class="hidden card">
+            <input id="new-title" type="text" placeholder="Title" />
+            <input id="new-author" type="text" placeholder="Author" />
+            <input id="new-isbn" type="text" placeholder="ISBN" />
+            <input id="new-category" type="text" placeholder="Category" />
+            <input
+              id="new-copies"
+              type="number"
+              min="1"
+              placeholder="Total copies"
+            />
+            <button onclick="addBook()">Save Book</button>
+            <button
+              class="secondary"
+              onclick="toggleAddBook()"
+              style="margin-left: 8px"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div id="librarian-books"></div>
+
+          <h2>All Borrows</h2>
+          <div id="all-borrows"></div>
+
+          <h2>Members</h2>
+          <div id="members"></div>
         </div>
       </div>
     </div>
@@ -185,16 +224,14 @@
         };
         if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
-        const res = await fetch(`${API}${path}`, {
-          ...options,
-          headers,
-        });
+        const res = await fetch(`${API}${path}`, { ...options, headers });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `HTTP ${res.status}`);
         }
         return res.json();
       }
+
       async function login() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
@@ -227,20 +264,27 @@
         document.getElementById("user-info").textContent =
           `${currentUser.name} (${currentUser.role})`;
 
-        await loadBooks();
-        await loadBorrows();
-
         if (currentUser.role === "LIBRARIAN") {
-          document
-            .getElementById("librarian-section")
-            .classList.remove("hidden");
+          document.getElementById("member-view").classList.add("hidden");
+          document.getElementById("librarian-view").classList.remove("hidden");
+          await loadBooks();
           await loadDashboard();
+          await loadMembers();
+          await loadAllBorrows();
+        } else {
+          document.getElementById("librarian-view").classList.add("hidden");
+          document.getElementById("member-view").classList.remove("hidden");
+          await loadBooks();
+          await loadBorrows();
         }
       }
 
+      // ---------- SHARED ----------
       async function loadBooks() {
-        const data = await api("/api/books?limit=20");
-        const el = document.getElementById("books");
+        const data = await api("/api/books?limit=50");
+        const elId =
+          currentUser.role === "LIBRARIAN" ? "librarian-books" : "member-books";
+        const el = document.getElementById(elId);
         if (data.books.length === 0) {
           el.innerHTML = '<p class="muted">No books yet.</p>';
           return;
@@ -248,29 +292,35 @@
         el.innerHTML = data.books
           .map(
             (b) => `
-        <div class="card">
-          <div class="card-row">
-            <div>
-              <strong>${b.title}</strong>
-              <div class="muted">${b.author} — ${b.category}</div>
+      <div class="card">
+        <div class="card-row">
+          <div>
+            <strong>${b.title}</strong>
+            <div class="muted">${b.author} — ${b.category}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="tag ${b.availableCopies > 0 ? "green" : "red"}">
+              ${b.availableCopies} / ${b.totalCopies} available
             </div>
-            <div style="text-align: right;">
-              <div class="tag ${b.availableCopies > 0 ? "green" : "red"}">
-                ${b.availableCopies} / ${b.totalCopies} available
-              </div>
-              ${
-                currentUser.role === "MEMBER" && b.availableCopies > 0
-                  ? `<button style="margin-top: 8px;" onclick="borrow('${b.id}')">Borrow</button>`
-                  : ""
-              }
-            </div>
+            ${
+              currentUser.role === "MEMBER" && b.availableCopies > 0
+                ? `<button style="margin-top: 8px;" onclick="borrow('${b.id}')">Borrow</button>`
+                : ""
+            }
+            ${
+              currentUser.role === "LIBRARIAN"
+                ? `<button class="secondary" style="margin-top: 8px;" onclick="deleteBook('${b.id}', '${b.title.replace(/'/g, "\\'")}')">Delete</button>`
+                : ""
+            }
           </div>
         </div>
-      `,
+      </div>
+    `,
           )
           .join("");
       }
 
+      // ---------- MEMBER ----------
       async function borrow(bookId) {
         try {
           await api("/api/borrows", {
@@ -294,20 +344,24 @@
         el.innerHTML = borrows
           .map(
             (b) => `
-        <div class="card">
-          <div class="card-row">
-            <div>
-              <strong>${b.book.title}</strong>
-              <div class="muted">Due: ${new Date(b.dueAt).toLocaleDateString()}</div>
-            </div>
-            <div style="text-align: right;">
-              <div class="tag ${b.status === "RETURNED" ? "" : b.status === "OVERDUE" ? "red" : "green"}">${b.status}</div>
-              ${b.fine > 0 ? `<div class="tag red" style="margin-top: 4px;">Fine: ${b.fine}</div>` : ""}
-              ${b.status !== "RETURNED" ? `<button class="secondary" style="margin-top: 8px;" onclick="returnBook('${b.id}')">Return</button>` : ""}
-            </div>
+      <div class="card">
+        <div class="card-row">
+          <div>
+            <strong>${b.book.title}</strong>
+            <div class="muted">Due: ${new Date(b.dueAt).toLocaleDateString()}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="tag ${b.status === "RETURNED" ? "" : b.status === "OVERDUE" ? "red" : "green"}">${b.status}</div>
+            ${b.fine > 0 ? `<div class="tag red" style="margin-top: 4px;">Fine: ${b.fine}</div>` : ""}
+            ${
+              b.status !== "RETURNED"
+                ? `<button class="secondary" style="margin-top: 8px;" onclick="returnBook('${b.id}')">Return</button>`
+                : ""
+            }
           </div>
         </div>
-      `,
+      </div>
+    `,
           )
           .join("");
       }
@@ -322,17 +376,121 @@
         }
       }
 
+      // ---------- LIBRARIAN ----------
       async function loadDashboard() {
         const d = await api("/api/dashboard");
         document.getElementById("dashboard").innerHTML = `
-        <div class="card">
-          <div>Total books: <strong>${d.totalBooks}</strong></div>
-          <div>Members: <strong>${d.totalMembers}</strong></div>
-          <div>Active borrows: <strong>${d.activeBorrows}</strong></div>
-          <div>Overdue: <strong>${d.overdueCount}</strong></div>
-          <div>Fines collected: <strong>${d.totalFinesCollected}</strong></div>
+      <div class="card">
+        <div>Total books: <strong>${d.totalBooks}</strong></div>
+        <div>Members: <strong>${d.totalMembers}</strong></div>
+        <div>Active borrows: <strong>${d.activeBorrows}</strong></div>
+        <div>Overdue: <strong>${d.overdueCount}</strong></div>
+        <div>Fines collected: <strong>${d.totalFinesCollected}</strong></div>
+      </div>
+    `;
+      }
+
+      async function loadAllBorrows() {
+        const borrows = await api("/api/borrows");
+        const el = document.getElementById("all-borrows");
+        if (borrows.length === 0) {
+          el.innerHTML = '<p class="muted">No borrows yet.</p>';
+          return;
+        }
+        el.innerHTML = borrows
+          .map(
+            (b) => `
+      <div class="card">
+        <div class="card-row">
+          <div>
+            <strong>${b.book.title}</strong>
+            <div class="muted">${b.user.name} (${b.user.email})</div>
+            <div class="muted">Due: ${new Date(b.dueAt).toLocaleDateString()}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="tag ${b.status === "RETURNED" ? "" : b.status === "OVERDUE" ? "red" : "green"}">${b.status}</div>
+            ${b.fine > 0 ? `<div class="tag red" style="margin-top: 4px;">Fine: ${b.fine}</div>` : ""}
+          </div>
         </div>
-      `;
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      async function loadMembers() {
+        const members = await api("/api/members");
+        const el = document.getElementById("members");
+        if (members.length === 0) {
+          el.innerHTML = '<p class="muted">No members yet.</p>';
+          return;
+        }
+        el.innerHTML = members
+          .map(
+            (m) => `
+      <div class="card">
+        <div class="card-row">
+          <div>
+            <strong>${m.name}</strong>
+            <div class="muted">${m.email}</div>
+          </div>
+          <div class="tag">${m._count.borrows} borrows</div>
+        </div>
+      </div>
+    `,
+          )
+          .join("");
+      }
+
+      function toggleAddBook() {
+        document.getElementById("add-book-form").classList.toggle("hidden");
+      }
+
+      async function addBook() {
+        const title = document.getElementById("new-title").value.trim();
+        const author = document.getElementById("new-author").value.trim();
+        const isbn = document.getElementById("new-isbn").value.trim();
+        const category = document.getElementById("new-category").value.trim();
+        const totalCopies = parseInt(
+          document.getElementById("new-copies").value,
+        );
+
+        if (!title || !author || !isbn || !category || !totalCopies) {
+          alert("Fill in all fields");
+          return;
+        }
+
+        try {
+          await api("/api/books", {
+            method: "POST",
+            body: JSON.stringify({
+              title,
+              author,
+              isbn,
+              category,
+              totalCopies,
+            }),
+          });
+          document.getElementById("new-title").value = "";
+          document.getElementById("new-author").value = "";
+          document.getElementById("new-isbn").value = "";
+          document.getElementById("new-category").value = "";
+          document.getElementById("new-copies").value = "1";
+          toggleAddBook();
+          await loadBooks();
+        } catch (e) {
+          alert("Add failed: " + e.message);
+        }
+      }
+
+      async function deleteBook(bookId, title) {
+        if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+        try {
+          await api(`/api/books/${bookId}`, { method: "DELETE" });
+          await loadBooks();
+        } catch (e) {
+          alert("Delete failed: " + e.message);
+        }
       }
     </script>
   </body>
