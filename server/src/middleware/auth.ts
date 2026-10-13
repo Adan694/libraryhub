@@ -15,9 +15,16 @@ declare global {
     }
   }
 }
-
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies?.token;
+  let token = req.cookies?.token;
+
+  if (!token) {
+    const header = req.headers.authorization;
+    if (header && header.startsWith("Bearer ")) {
+      token = header.slice(7);
+    }
+  }
+
   if (!token) return res.status(401).json({ error: "Not authenticated" });
 
   try {

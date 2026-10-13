@@ -176,15 +176,18 @@
     <script>
       const API = "https://libraryhub-two.vercel.app";
       let currentUser = null;
+      let authToken = localStorage.getItem("lh_token") || "";
 
       async function api(path, options = {}) {
+        const headers = {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        };
+        if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
         const res = await fetch(`${API}${path}`, {
           ...options,
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {}),
-          },
+          headers,
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -192,7 +195,6 @@
         }
         return res.json();
       }
-
       async function login() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
@@ -203,6 +205,8 @@
             method: "POST",
             body: JSON.stringify({ email, password }),
           });
+          authToken = currentUser.token;
+          localStorage.setItem("lh_token", authToken);
           showApp();
         } catch (e) {
           errEl.textContent = e.message;
@@ -210,7 +214,8 @@
       }
 
       async function logout() {
-        await api("/api/auth/logout", { method: "POST" });
+        authToken = "";
+        localStorage.removeItem("lh_token");
         currentUser = null;
         document.getElementById("login-view").classList.remove("hidden");
         document.getElementById("app-view").classList.add("hidden");

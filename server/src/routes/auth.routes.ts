@@ -37,8 +37,15 @@ authRouter.post("/register", async (req, res, next) => {
       },
     });
 
-    setCookie(res, issueToken(user.id, user.role));
-    res.status(201).json({ id: user.id, email: user.email, name: user.name, role: user.role });
+   const token = issueToken(user.id, user.role);
+setCookie(res, token);
+res.status(201).json({
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  role: user.role,
+  token,
+});
   } catch (e) { next(e); }
 });
 
@@ -51,8 +58,15 @@ authRouter.post("/login", async (req, res, next) => {
     const ok = await verifyPassword(data.password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    setCookie(res, issueToken(user.id, user.role));
-    res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
+    const token = issueToken(user.id, user.role);
+setCookie(res, token);
+res.json({
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  role: user.role,
+  token,
+});
   } catch (e) { next(e); }
 });
 
