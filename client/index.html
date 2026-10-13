@@ -219,6 +219,8 @@
 
     <script>
       const API = "https://libraryhub-two.vercel.app";
+      window.z = window.Zod;
+
       // Same definitions as server/src/schemas/ — kept in sync manually
       const registerSchema = z.object({
         email: z.string().email(),

@@ -16,7 +16,6 @@ A library management system built as the Week 2 task for the DawoodTech Full Sta
 
 ## Screenshots
 
-![Librarian dashboard](client/screenshots/dashboard.png)
 
 ### Desktop view
 
